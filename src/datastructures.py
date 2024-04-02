@@ -6,7 +6,7 @@ update this file to implement the following already declared methods:
 - update_member: Should update a member from the self._members list
 - get_member: Should return a member from the self._members list
 """
-from random import randint
+sasdasdasd
 
 class FamilyStructure:
     def __init__(self, last_name):
