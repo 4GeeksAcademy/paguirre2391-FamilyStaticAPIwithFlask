@@ -6,53 +6,61 @@ from flask import Flask, request, jsonify, url_for
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from datastructures import FamilyStructure
+#from models import Person
+
 app = Flask(__name__)
+app.url_map.strict_slashes = False
+CORS(app)
 
-jackson_family = FamilyStructure('Jackson')
+# create the jackson family object
+jackson_family = FamilyStructure("Jackson")
 
+# Handle/serialize errors like a JSON object
+@app.errorhandler(APIException)
+def handle_invalid_usage(error):
+    return jsonify(error.to_dict()), error.status_code
 
-# Obtener todos los miembros de la familia
+# generate sitemap with all your endpoints
+@app.route('/')
+def sitemap():
+    return generate_sitemap(app)
+
 @app.route('/members', methods=['GET'])
-def get_members():
-    try:
-        members = jackson_family.get_all_members()
-        return jsonify(members), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+def handle_hello():
+    members = jackson_family.get_all_members()
+    response_body = {
+        "members": members
+    }
+    return jsonify(response_body), 200
 
-# Recuperar solo un miembro por id
-@app.route('/member/<int:member_id>', methods=['GET'])
-def get_member(member_id):
-    try:
-        member = jackson_family.get_member(member_id)
-        if member:
-            return jsonify(member), 200
-        else:
-            return jsonify({"error": "Member not found"}), 404
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# Añadir un nuevo miembro a la familia
 @app.route('/member', methods=['POST'])
 def add_member():
-    try:
-        data = request.json
-        jackson_family.add_member(data)
-        return jsonify({"message": "Member added successfully"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    new_member = request.json
+    jackson_family.add_member(new_member)
+    return jsonify(new_member), 200  # Corregido: Devuelve el miembro recién creado
 
-# Eliminar un miembro por id
 @app.route('/member/<int:member_id>', methods=['DELETE'])
-def delete_member(member_id):
-    try:
-        success = jackson_family.delete_member(member_id)
-        if success:
-            return jsonify({"done": True}), 200
-        else:
-            return jsonify({"error": "Member not found"}), 404
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+def delete_family_member(member_id):
+    delete_member = jackson_family.delete_member(member_id)
+    if not delete_member:
+        return jsonify({"msg": "member not found"}), 400
+    return jsonify({"done": True}), 200
 
+@app.route('/member/<int:member_id>', methods=['PUT'])
+def update_family_member(member_id):
+    new_member = request.json
+    updated_member = jackson_family.update_member(member_id, new_member)  # Corregido: Corregida la comilla de cierre
+    if not updated_member:
+        return jsonify({"msg": "member not found"}), 400
+    return jsonify({"done": "member updated"}), 200
+
+@app.route('/member/<int:member_id>', methods=['GET'])
+def get_one_member(member_id):
+    miembro_encontrado = jackson_family.get_member(member_id)
+    if not miembro_encontrado:
+        return jsonify({"msg": "member not found"}), 400
+    return jsonify(miembro_encontrado), 200
+# this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
-    app.run(debug=True)
+    PORT = int(os.environ.get('PORT', 3000))
+    app.run(host='0.0.0.0', port=PORT, debug=True)
